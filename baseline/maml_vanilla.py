@@ -87,6 +87,7 @@ flags.DEFINE_string('norm', 'batch_norm', 'batch_norm, layer_norm, or None')
 flags.DEFINE_string('logdir', '/tmp/data',
                     'directory for summaries and checkpoints.')
 flags.DEFINE_bool('train', True, 'True to train, False to test.')
+flags.DEFINE_bool('test', True, 'True to train, False to test.')
 flags.DEFINE_string('extra', 'exp', 'extra info')
 flags.DEFINE_integer('trial', 1, 'trial_num')
 
@@ -116,9 +117,9 @@ def train(model, sess, checkpoint_dir, _):
   tf.global_variables_initializer().run()
 
   for itr in range(FLAGS.metatrain_iterations):
-    print('###############################')
-    print(itr)
-    print('###############################')
+    #print('###############################')
+    #print(itr)
+    #print('###############################')
     feed_dict = {}
     input_tensors = [model.metatrain_op]
 
@@ -319,8 +320,11 @@ def main(_):
   tf.global_variables_initializer().run()
 
   if FLAGS.train:
+    print("Starting training...")
     train(model, sess, checkpoint_dir, exp_name)
-  else:
+  
+  if FLAGS.test:
+    print("Starting testing...")
     test(model, sess, checkpoint_dir)
 
 

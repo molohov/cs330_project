@@ -25,6 +25,7 @@ from __future__ import print_function
 import functools
 import os
 import pickle
+import random
 import time
 
 from absl import app
@@ -96,7 +97,8 @@ flags.DEFINE_string('norm', 'batch_norm', 'batch_norm, layer_norm, or None')
 ## Logging, saving, and testing options
 flags.DEFINE_string('logdir', '/tmp/data',
                     'directory for summaries and checkpoints.')
-flags.DEFINE_bool('train', True, 'True to train, False to test.')
+flags.DEFINE_bool('train', True, 'True to train, False to not.')
+flags.DEFINE_bool('test', True, 'True to test, False to not.')
 flags.DEFINE_integer('trial', 1, 'trial_num')
 flags.DEFINE_float('var', -20.0, 'var initial')
 
@@ -126,9 +128,9 @@ def train(model, sess, checkpoint_dir, _):
   tf.global_variables_initializer().run()
 
   for itr in range(FLAGS.metatrain_iterations):
-    print('###############################')
-    print(itr)
-    print('###############################')
+    #print('###############################')
+    #print(itr)
+    #print('###############################')
     # feed_dict = {model.beta:beta_value}
     feed_dict = {}
     input_tensors = [model.metatrain_op]
@@ -176,6 +178,27 @@ def train(model, sess, checkpoint_dir, _):
       val_step.append(itr)
       prelosses_val, postlosses_val = [], []
 
+def test(model, sess, _):
+  """Test model."""
+  np.random.seed(1)
+  random.seed(1)
+  NUM_TEST_POINTS = 600  # pylint: disable=invalid-name
+  metaval_accuracies = []
+
+  for _ in range(NUM_TEST_POINTS):
+    feed_dict = {}
+    feed_dict = {model.meta_lr: 0.0}
+    result = sess.run([model.metaval_total_loss1] + model.metaval_total_losses2,
+                      feed_dict)
+    metaval_accuracies.append(result)
+
+  metaval_accuracies = np.array(metaval_accuracies)
+  means = np.mean(metaval_accuracies, 0)
+  stds = np.std(metaval_accuracies, 0)
+  ci95 = 1.96 * stds / np.sqrt(NUM_TEST_POINTS)
+
+  print('Mean validation accuracy/loss, stddev, and confidence intervals')
+  print((means, stds, ci95))
 
 def get_batch(x, y):
   """Get data batch."""
@@ -357,7 +380,12 @@ def main(_):
   tf.global_variables_initializer().run()
 
   if FLAGS.train:
+    print("Starting training...")
     train(model, sess, checkpoint_dir, exp_name)
+  
+  if FLAGS.test:
+    print("Starting testing...")
+    test(model, sess, checkpoint_dir)
 
 
 if __name__ == '__main__':
