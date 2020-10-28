@@ -84,7 +84,7 @@ flags.DEFINE_bool(
 flags.DEFINE_string('norm', 'batch_norm', 'batch_norm, layer_norm, or None')
 
 ## Logging, saving, and testing options
-flags.DEFINE_string('logdir', '/tmp/data',
+flags.DEFINE_string('logdir', './summary/',
                     'directory for summaries and checkpoints.')
 flags.DEFINE_bool('train', True, 'True to train, False to test.')
 flags.DEFINE_bool('test', True, 'True to train, False to test.')

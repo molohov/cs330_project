@@ -1,5 +1,5 @@
 # coding=utf-8
-# Copyright 2020 The Google Research Authors.
+# Copyright 2019 The Google Research Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -18,8 +18,7 @@ from __future__ import print_function
 
 from absl import flags
 import numpy as np
-import tensorflow.compat.v1 as tf
-from tensorflow.contrib import layers as contrib_layers
+import tensorflow as tf
 from tensorflow.contrib.layers.python import layers as tf_layers
 
 FLAGS = flags.FLAGS
@@ -237,7 +236,7 @@ class MAML(object):
     weights = {}
 
     dtype = tf.float32
-    conv_initializer = contrib_layers.xavier_initializer_conv2d(dtype=dtype)
+    conv_initializer = tf.contrib.layers.xavier_initializer_conv2d(dtype=dtype)
     k = 3
 
     weights['conv1'] = tf.get_variable(
