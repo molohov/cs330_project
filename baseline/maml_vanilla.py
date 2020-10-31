@@ -51,13 +51,15 @@ flags.DEFINE_integer(
     'num_classes', 1,
     'number of classes used in classification (e.g. 5-way classification).')
 flags.DEFINE_integer(
-    'update_batch_size', 10,
+    'update_batch_size', 15,
     'number of examples used for inner gradient update (K for K-shot learning).'
 )
 flags.DEFINE_integer('num_updates', 5,
                      'number of inner gradient updates during training.')
 flags.DEFINE_integer('meta_batch_size', 10,
                      'number of tasks sampled per meta-update')
+flags.DEFINE_integer('test_num_updates', 20,
+                     'number of inner gradient updates during test.')
 
 flags.DEFINE_float('meta_lr', 0.0005, 'the base learning rate of the generator')
 flags.DEFINE_float(
@@ -87,13 +89,11 @@ flags.DEFINE_string('norm', 'batch_norm', 'batch_norm, layer_norm, or None')
 flags.DEFINE_string('logdir', './summary/',
                     'directory for summaries and checkpoints.')
 flags.DEFINE_bool('train', True, 'True to train, False to test.')
-flags.DEFINE_bool('test', True, 'True to train, False to test.')
 flags.DEFINE_string('extra', 'exp', 'extra info')
 flags.DEFINE_integer('trial', 1, 'trial_num')
 
 
 def train(model, sess, checkpoint_dir, _):
-  """Train model."""
   print('Done initializing, starting training.')
 
   old_time = time.time()
@@ -114,7 +114,7 @@ def train(model, sess, checkpoint_dir, _):
 
   summary_writer = tf.summary.FileWriter(checkpoint_dir, sess.graph)
 
-  tf.global_variables_initializer().run()
+  #tf.global_variables_initializer().run()
 
   for itr in range(FLAGS.metatrain_iterations):
     #print('###############################')
@@ -195,7 +195,7 @@ def get_batch(x, y):
   for _ in range(FLAGS.meta_batch_size):
     # sample WAY classes
     classes = np.random.choice(
-        range(np.shape(x)[0]), size=FLAGS.num_classes, replace=False)
+        list(range(np.shape(x)[0])), size=FLAGS.num_classes, replace=False)
 
     support_set = []
     query_set = []
@@ -204,7 +204,7 @@ def get_batch(x, y):
     for k in list(classes):
       # sample SHOT and QUERY instances
       idx = np.random.choice(
-          range(np.shape(x)[1]),
+          list(range(np.shape(x)[1])),
           size=FLAGS.update_batch_size + FLAGS.update_batch_size,
           replace=False)
       x_k = x[k][idx]
@@ -236,8 +236,8 @@ def get_batch(x, y):
       [FLAGS.meta_batch_size, FLAGS.update_batch_size * FLAGS.num_classes, -1])
   xs = xs.astype(np.float32) / 255.0
   xq = xq.astype(np.float32) / 255.0
-  ys = ys.astype(np.float32)
-  yq = yq.astype(np.float32)
+  ys = ys.astype(np.float32) * 10.0
+  yq = yq.astype(np.float32) * 10.0
   return xs, ys, xq, yq
 
 
@@ -252,21 +252,19 @@ def main(_):
 
   if FLAGS.weight_decay:
     exp_name = '%s.meta_lr-%g.update_lr-%g.beta-%g.trial-%d' % (
-        'maml_vanilla', FLAGS.meta_lr, FLAGS.update_lr, FLAGS.beta, FLAGS.trial)
+        'maml_pose_vanilla', FLAGS.meta_lr, FLAGS.update_lr, FLAGS.beta, FLAGS.trial)
   else:
     exp_name = '%s.meta_lr-%g.update_lr-%g.trial-%d' % (
-        'maml_vanilla', FLAGS.meta_lr, FLAGS.update_lr, FLAGS.trial)
+        'maml_pose_vanilla', FLAGS.meta_lr, FLAGS.update_lr, FLAGS.trial)
   checkpoint_dir = os.path.join(FLAGS.logdir, exp_name)
 
-  x_train, y_train = pickle.load(
-      tf.io.gfile.GFile(os.path.join(get_data_dir(), FLAGS.data[0]), 'rb'))
-  x_val, y_val = pickle.load(
-      tf.io.gfile.GFile(os.path.join(get_data_dir(), FLAGS.data[1]), 'rb'))
+  x_train, y_train = pickle.load(open(os.getcwd()+'/'+FLAGS.data_dir+FLAGS.data[0],'rb'))
+  x_val, y_val = pickle.load(open(os.getcwd()+'/'+FLAGS.data_dir+FLAGS.data[1],'rb'))
 
   x_train, y_train = np.array(x_train), np.array(y_train)
-  y_train = y_train[:, :, -1, None] * 10
+  y_train = y_train[:, :, -1, None]
   x_val, y_val = np.array(x_val), np.array(y_val)
-  y_val = y_val[:, :, -1, None] * 10
+  y_val = y_val[:, :, -1, None]
 
   ds_train = tf.data.Dataset.from_generator(
       functools.partial(gen, x_train, y_train),
@@ -311,7 +309,7 @@ def main(_):
   model.construct_model(
       input_tensors=metaval_input_tensors,
       prefix='metaval_',
-      test_num_updates=20)
+      test_num_updates=FLAGS.test_num_updates)
 
   # model.construct_model(input_tensors=input_tensors, prefix='metaval_')
   model.summ_op = tf.summary.merge_all()
@@ -322,10 +320,6 @@ def main(_):
   if FLAGS.train:
     print("Starting training...")
     train(model, sess, checkpoint_dir, exp_name)
-  
-  if FLAGS.test:
-    print("Starting testing...")
-    test(model, sess, checkpoint_dir)
 
 
 if __name__ == '__main__':
