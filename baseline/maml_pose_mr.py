@@ -20,7 +20,7 @@ from tensorflow.keras.layers import MaxPooling2D
 import tensorflow_probability as tfp
 from tensorflow_probability.python.layers import util as tfp_layers_util
 
-from maml_bbb_2 import MAML
+from maml_pose_mr_2 import MAML
 tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
 #%%
 
@@ -36,7 +36,7 @@ flags.DEFINE_list('data', ['train_data_ins.pkl', 'val_data_ins.pkl'],
                   'data name')
 
 ## Training options
-flags.DEFINE_float('beta', 1e-3, 'beta for IB')
+flags.DEFINE_float('beta', 1e-3, 'beta for IB') ## doesn't matter for MR
 flags.DEFINE_integer(
     'num_classes', 1,
     'number of classes used in classification (e.g. 5-way classification).')
@@ -51,7 +51,7 @@ flags.DEFINE_integer('meta_batch_size', 10,
 flags.DEFINE_integer('test_num_updates', 20,
                      'number of inner gradient updates during test.')
 
-flags.DEFINE_float('meta_lr', 0.002, 'the base learning rate of the generator')
+flags.DEFINE_float('meta_lr', 0.002, 'the base learning rate of the generator') ## no effect on MR
 flags.DEFINE_float(
     'update_lr', 0.002,
     'step size alpha for inner gradient update.')  # 0.1 for omniglot
@@ -197,7 +197,7 @@ def main(_):
   dim_input = FLAGS.dim_im * FLAGS.dim_im * 1
 
   exp_name = '%s.beta-%g.meta_lr-%g.update_lr-%g.trial-%d' % (
-      'maml_mr_pose', FLAGS.beta, FLAGS.meta_lr, FLAGS.update_lr, FLAGS.trial)
+      'maml_pose_MR', FLAGS.beta, FLAGS.meta_lr, FLAGS.update_lr, FLAGS.trial)
   checkpoint_dir = os.path.join(FLAGS.logdir, exp_name)
 
   x_train, y_train = pickle.load(open(os.getcwd()+'/'+FLAGS.data_dir+FLAGS.data[0],'rb'))

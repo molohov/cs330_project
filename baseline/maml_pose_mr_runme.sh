@@ -1,1 +1,1 @@
-python maml_bbb.py --data_dir ../dataset/pose/
+python maml_pose_mr.py --data_dir ../dataset/pose/
