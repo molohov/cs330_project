@@ -1,1 +1,1 @@
-python mr_maml.py --data_dir ../dataset/omniglot/
+python maml_omni_mr.py --data_dir ../dataset/omniglot/
