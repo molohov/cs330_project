@@ -25,7 +25,6 @@ from tensorflow.contrib.layers.python import layers as tf_layers
 
 FLAGS = flags.FLAGS
 
-
 ## Network helpers
 def conv_block(x, weight, bias, reuse, scope):
   x = tf.nn.conv2d(x, weight, [1, 1, 1, 1], 'SAME') + bias
@@ -42,6 +41,11 @@ def mse(pred, label):
   label = tf.reshape(label, [-1])
   return tf.reduce_mean(tf.square(pred - label))
 
+def reg1(y_pred, x_train, y_pred_f, x_train_f):
+  numerator = tf.reduce_sum(tf.square(y_pred - y_pred_f))
+  denom = tf.reduce_sum(tf.square(x_train - x_train_f))
+  return tf.math.minimum(numerator/denom, 1e6) ## some giant tau
+
 
 class MAML(object):
   """MAML algo object."""
@@ -55,6 +59,7 @@ class MAML(object):
     self.classification = False
 
     self.loss_func = mse
+    self.regularizer = reg1
 
     self.classification = True
     self.dim_hidden = FLAGS.num_filters
@@ -147,7 +152,8 @@ class MAML(object):
         task_msesb.append(self.loss_func(output, labelb))
 
         ## BEGIN second network with FAKE train data/labels
-        task_output_fake = self.forward(inputa, weights, reuse=True)  # FIXME use FAKE input
+        input_fake = inputa + 1
+        task_output_fake = self.forward(input_fake, weights, reuse=True)  # FIXME use FAKE input
         task_loss_fake = self.loss_func(task_output_fake, labela) # FIXME use FAKE label
 
         # INNER LOOP
@@ -173,7 +179,9 @@ class MAML(object):
         output_fake = self.forward(inputb, fast_weights, reuse=True)
         ## END second network with FAKE train data/labels
 
-        task_lossesb.append(self.loss_func(output, labelb) + self.loss_func(output_fake, labelb))
+        loss = self.loss_func(output, labelb) - self.regularizer(output, inputa, output_fake, input_fake)
+        
+        task_lossesb.append(loss)
         task_output = [
             task_outputa, task_outputbs, task_lossa, task_lossesb, task_msesb
         ]
