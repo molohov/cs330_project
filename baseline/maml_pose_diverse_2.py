@@ -44,7 +44,7 @@ def mse(pred, label):
 def reg1(y_pred, x_train, y_pred_f, x_train_f):
   numerator = tf.reduce_sum(tf.square(y_pred - y_pred_f))
   denom = tf.reduce_sum(tf.square(x_train - x_train_f))
-  return tf.math.minimum(numerator/denom, 1e6) ## some giant tau
+  return tf.math.minimum(numerator/denom, 1e6) ## some upper bound
 
 
 class MAML(object):
@@ -152,14 +152,15 @@ class MAML(object):
         task_msesb.append(self.loss_func(output, labelb))
 
         ## BEGIN second network with FAKE train data/labels
-        input_fake = inputa + 1
+        input_fake = tf.random.uniform(shape=inputa.shape)
+        label_fake = tf.random.uniform(shape=labela.shape)
         task_output_fake = self.forward(input_fake, weights, reuse=True)  # FIXME use FAKE input
-        task_loss_fake = self.loss_func(task_output_fake, labela) # FIXME use FAKE label
+        task_loss_fake = self.loss_func(task_output_fake, label_fake) # FIXME use FAKE label
 
         # INNER LOOP
         grads = tf.gradients(task_loss_fake, list(weights.values()))
-        if FLAGS.stop_grad:
-          grads = [tf.stop_gradient(grad) for grad in grads]
+        # we do not want to backprop through these weights
+        grads = [tf.stop_gradient(grad) for grad in grads]
         gradients = dict(zip(weights.keys(), grads))
         ## theta_pi = theta - alpha * grads
         fast_weights = dict(
@@ -179,11 +180,13 @@ class MAML(object):
         output_fake = self.forward(inputb, fast_weights, reuse=True)
         ## END second network with FAKE train data/labels
 
-        loss = self.loss_func(output, labelb) - self.regularizer(output, inputa, output_fake, input_fake)
+        reg = self.regularizer(output, inputa, output_fake, input_fake)
+        reg_scale = FLAGS.reg_scale
+        loss = self.loss_func(output, labelb) - reg_scale * reg
         
         task_lossesb.append(loss)
         task_output = [
-            task_outputa, task_outputbs, task_lossa, task_lossesb, task_msesb
+            task_outputa, task_outputbs, task_lossa, task_lossesb, task_msesb, reg
         ]
 
         return task_output
@@ -196,12 +199,12 @@ class MAML(object):
             False)
 
       out_dtype = [
-          tf.float32, [tf.float32] * 2, tf.float32, [tf.float32], [tf.float32]
+          tf.float32, [tf.float32] * 2, tf.float32, [tf.float32], [tf.float32], tf.float32
       ]
       result = tf.map_fn(task_metalearn, elems=(self.inputa, self.inputb, \
                                                 self.labela, self.labelb), dtype=out_dtype, \
                                                 parallel_iterations=FLAGS.meta_batch_size)
-      outputas, outputbs, lossesa, lossesb, msesb = result
+      outputas, outputbs, lossesa, lossesb, msesb, reg = result
 
     ## Performance & Optimization
     if 'train' in prefix:
@@ -215,6 +218,9 @@ class MAML(object):
       self.total_losses2 = total_losses2 = tf.reduce_sum(lossesb) / tf.to_float(FLAGS.meta_batch_size)
       # after the map_fn
       self.outputas, self.outputbs = outputas, outputbs
+      # capture the regularizer over the batch
+      reg_avg = tf.reduce_sum(reg) / tf.to_float(FLAGS.meta_batch_size)
+      tf.summary.scalar(prefix + 'diverse_reg', reg_avg)
 
       # OUTER LOOP
       if FLAGS.metatrain_iterations > 0:
