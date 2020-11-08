@@ -54,7 +54,7 @@ flags.DEFINE_bool('stop_grad', False,
                   'if True, do not use second derivatives (for speed)')
 
 ## Logging, saving, and testing options
-flags.DEFINE_string('logdir', './summary', \
+flags.DEFINE_string('logdir', './summary_omni', \
                     'directory for summaries and checkpoints.')
 flags.DEFINE_integer('trial', 1, 'trial_num')
 
