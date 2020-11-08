@@ -42,8 +42,8 @@ def mse(pred, label):
   return tf.reduce_mean(tf.square(pred - label))
 
 def reg1(y_pred, x_train, y_pred_f, x_train_f):
-  numerator = tf.reduce_sum(tf.square(y_pred - y_pred_f))
-  denom = tf.reduce_sum(tf.square(x_train - x_train_f))
+  numerator = tf.reduce_sum(tf.sqrt(tf.reduce_sum(tf.square(y_pred - y_pred_f), axis=-1)))
+  denom = tf.reduce_sum(tf.sqrt(tf.reduce_sum(tf.square(x_train - x_train_f), axis=-1)))
   return tf.math.minimum(numerator/denom, 1e6) ## some upper bound
 
 

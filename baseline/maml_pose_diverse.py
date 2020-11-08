@@ -251,7 +251,7 @@ def main(_):
   dim_output = FLAGS.dim_y
   dim_input = FLAGS.dim_im * FLAGS.dim_im * 1
 
-  exp = 'maml_pose_diverse'
+  exp = 'maml_pose_diverse_dist'
   if FLAGS.weight_decay:
     exp_name = '%s.reg_scale-%g.meta_lr-%g.update_lr-%g.beta-%g.trial-%d' % (
         exp, FLAGS.reg_scale, FLAGS.meta_lr, FLAGS.update_lr, FLAGS.beta, FLAGS.trial)
