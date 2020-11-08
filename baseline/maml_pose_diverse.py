@@ -38,7 +38,7 @@ flags.DEFINE_string('datasource', 'pose',
 flags.DEFINE_integer('dim_w', 196, 'dimension of w')
 flags.DEFINE_integer('dim_im', 128, 'dimension of image')
 flags.DEFINE_integer('dim_y', 1, 'dimension of w')
-flags.DEFINE_string('data_dir', None,
+flags.DEFINE_string('data_dir', '../dataset/pose/',
                     'Directory of data files.')
 get_data_dir = lambda: FLAGS.data_dir
 flags.DEFINE_list('data', ['train_data_ins.pkl', 'val_data_ins.pkl'],
@@ -94,78 +94,53 @@ flags.DEFINE_integer('trial', 1, 'trial_num')
 flags.DEFINE_integer('reg_scale', 1000, 'reg_scale')
 
 
-def train(model, sess, checkpoint_dir, _):
-  print('Done initializing, starting training.')
+def train(model, sess, checkpoint_dir):
+    print('Done initializing, start training.')
+    #old_time = time.time()
+    SUMMARY_INTERVAL = 5
+    PRINT_INTERVAL = 50
+    EXPERIMENT = 'pose'+ str(FLAGS.update_batch_size)+'shot'+str(FLAGS.beta)
 
-  old_time = time.time()
-  SUMMARY_INTERVAL = 5  # pylint: disable=invalid-name
-  PRINT_INTERVAL = 5  # pylint: disable=invalid-name
-  TEST_PRINT_INTERVAL = 5  # pylint: disable=invalid-name
-  prelosses, postlosses = [], []
-  prelosses_val, postlosses_val = [], []
+    summary_writer = tf.summary.FileWriter(checkpoint_dir, sess.graph)
+    prelosses, postlosses = [], []
+    prelosses_val, postlosses_val = [], []
+    iter_r = []; pre_train_r = []; post_train_r = []; 
+    pre_val_r = []; post_val_r = []
+    
+    for itr in range( FLAGS.metatrain_iterations):
+        input_tensors = [model.metatrain_op]
 
-  train_0 = []
-  train_k = []
-  train_step = []
-  val_0 = []
-  val_k = []
-  val_step = []
+        if (itr % SUMMARY_INTERVAL == 0 or itr % PRINT_INTERVAL == 0):
+            input_tensors.extend([model.total_loss1, model.total_losses2])
+            input_tensors_val = [
+                  model.metaval_total_loss1, model.metaval_total_losses2
+              ]
+        result = sess.run(input_tensors, feed_dict={})
 
-  # Merge all the summaries and write them out to
+        if (itr % SUMMARY_INTERVAL == 0 or itr % PRINT_INTERVAL == 0):
+            summary, result_val = sess.run([model.summ_op, input_tensors_val], feed_dict={})
+            summary_writer.add_summary(summary, itr)
+            prelosses.append(result[-2])
+            postlosses.append(result[-1])
+            prelosses_val.append(result_val[-2]) #0 step loss on meta_val training set
+            postlosses_val.append(result_val[-1]) #K step loss on meta_val validation set
 
-  summary_writer = tf.summary.FileWriter(checkpoint_dir, sess.graph)
+        if (itr!=0) and itr % PRINT_INTERVAL == 0:  
+            print('###############################')
+            print(' Iteration ' + str(itr) + ':')
+            print('Training: ', 'pre -->', np.mean(prelosses), 'post-->', np.mean(postlosses))            
+            print('Validation: ', 'pre-->', np.mean(prelosses_val), 'post-->', np.mean(postlosses_val))
+            #print('time =', time.time() - old_time) 
+            print('###############################')
+            
+            # iter_r.append(itr)
+            # pre_train_r.append(np.mean(prelosses)); post_train_r.append(np.mean(postlosses))
+            # pre_val_r.append(np.mean(prelosses_val)); post_val_r.append(np.mean(postlosses_val))
+            # all_ = [iter_r, pre_train_r,post_train_r, pre_val_r, post_val_r]
+            # #pickle.dump(all_, open(directory+EXPERIMENT, 'wb'))
 
-  #tf.global_variables_initializer().run()
-
-  for itr in range(FLAGS.metatrain_iterations):
-    #print('###############################')
-    #print(itr)
-    #print('###############################')
-    feed_dict = {}
-    input_tensors = [model.metatrain_op]
-
-    if (itr % SUMMARY_INTERVAL == 0 or itr % PRINT_INTERVAL == 0):
-      input_tensors.extend([model.total_loss1, model.total_losses2])
-      input_tensors_val = [
-          model.metaval_total_loss1, model.metaval_total_losses2
-      ]
-      feed_dict = {}
-      summary, result_val = sess.run([model.summ_op, input_tensors_val],
-                                     feed_dict)
-
-      summary_writer.add_summary(summary, itr)
-
-    result = sess.run(input_tensors, feed_dict)
-
-    if itr % SUMMARY_INTERVAL == 0:
-      prelosses.append(result[-2])  # 0 step loss on training set
-      postlosses.append(result[-1])  # K step loss on validation set
-
-      prelosses_val.append(
-          result_val[-2])  # 0 step loss on meta_val training set
-      postlosses_val.append(
-          result_val[-1])  # K step loss on meta_val validation set
-
-    if (itr != 0) and itr % PRINT_INTERVAL == 0:
-      print_str = 'Iteration ' + str(itr)
-      print_str += ': ' + str(np.mean(prelosses)) + ', ' + str(
-          np.mean(postlosses))
-      print(print_str, 'time =', time.time() - old_time)
-
-      train_0.append(np.mean(prelosses))
-      train_k.append(np.mean(postlosses))
-      train_step.append(itr)
-      prelosses, postlosses = [], []
-      old_time = time.time()
-
-    if (itr != 0) and itr % TEST_PRINT_INTERVAL == 0:
-      print('Validation results: ' + str(np.mean(prelosses_val)) + ', ' +
-            str(np.mean(postlosses_val)))
-      val_0.append(np.mean(prelosses_val))
-      val_k.append(np.mean(postlosses_val))
-      val_step.append(itr)
-      prelosses_val, postlosses_val = [], []
-
+            prelosses, postlosses = [], []
+            prelosses_val, postlosses_val = [], []
 
 def test(model, sess, _):
   """Test model."""
@@ -251,7 +226,7 @@ def main(_):
   dim_output = FLAGS.dim_y
   dim_input = FLAGS.dim_im * FLAGS.dim_im * 1
 
-  exp = 'maml_pose_diverse_dist'
+  exp = 'maml_pose_diverse_dist_stopgrad'
   if FLAGS.weight_decay:
     exp_name = '%s.reg_scale-%g.meta_lr-%g.update_lr-%g.beta-%g.trial-%d' % (
         exp, FLAGS.reg_scale, FLAGS.meta_lr, FLAGS.update_lr, FLAGS.beta, FLAGS.trial)
@@ -321,7 +296,7 @@ def main(_):
 
   if FLAGS.train:
     print("Starting training...")
-    train(model, sess, checkpoint_dir, exp_name)
+    train(model, sess, checkpoint_dir)
 
 
 if __name__ == '__main__':

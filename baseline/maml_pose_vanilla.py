@@ -38,7 +38,7 @@ flags.DEFINE_string('datasource', 'pose',
 flags.DEFINE_integer('dim_w', 196, 'dimension of w')
 flags.DEFINE_integer('dim_im', 128, 'dimension of image')
 flags.DEFINE_integer('dim_y', 1, 'dimension of w')
-flags.DEFINE_string('data_dir', None,
+flags.DEFINE_string('data_dir', '../dataset/pose/',
                     'Directory of data files.')
 get_data_dir = lambda: FLAGS.data_dir
 flags.DEFINE_list('data', ['train_data_ins.pkl', 'val_data_ins.pkl'],
@@ -132,11 +132,11 @@ def train(model, sess, checkpoint_dir):
             #print('time =', time.time() - old_time) 
             print('###############################')
             
-            iter_r.append(itr)
-            pre_train_r.append(np.mean(prelosses)); post_train_r.append(np.mean(postlosses))
-            pre_val_r.append(np.mean(prelosses_val)); post_val_r.append(np.mean(postlosses_val))
-            all_ = [iter_r, pre_train_r,post_train_r, pre_val_r, post_val_r]
-            pickle.dump(all_, open(directory+EXPERIMENT, 'wb'))
+            # iter_r.append(itr)
+            # pre_train_r.append(np.mean(prelosses)); post_train_r.append(np.mean(postlosses))
+            # pre_val_r.append(np.mean(prelosses_val)); post_val_r.append(np.mean(postlosses_val))
+            # all_ = [iter_r, pre_train_r,post_train_r, pre_val_r, post_val_r]
+            # #pickle.dump(all_, open(directory+EXPERIMENT, 'wb'))
 
             prelosses, postlosses = [], []
             prelosses_val, postlosses_val = [], []
