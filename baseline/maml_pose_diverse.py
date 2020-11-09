@@ -91,7 +91,7 @@ flags.DEFINE_string('logdir', './summary/',
 flags.DEFINE_bool('train', True, 'True to train, False to test.')
 flags.DEFINE_string('extra', 'exp', 'extra info')
 flags.DEFINE_integer('trial', 1, 'trial_num')
-flags.DEFINE_integer('reg_scale', 1000, 'reg_scale')
+flags.DEFINE_integer('reg_scale', 10, 'reg_scale')
 
 
 def train(model, sess, checkpoint_dir, _):
@@ -253,10 +253,10 @@ def main(_):
 
   exp = 'maml_pose_diverse_dist'
   if FLAGS.weight_decay:
-    exp_name = '%s.reg_scale-%g.meta_lr-%g.update_lr-%g.beta-%g.trial-%d' % (
+    exp_name = '%s.reg_scale-%g.meta_lr-%g.update_lr-%g.beta-%g.trial-%d-random_alter' % (
         exp, FLAGS.reg_scale, FLAGS.meta_lr, FLAGS.update_lr, FLAGS.beta, FLAGS.trial)
   else:
-    exp_name = '%s.reg_scale-%g.meta_lr-%g.update_lr-%g.trial-%d' % (
+    exp_name = '%s.reg_scale-%g.meta_lr-%g.update_lr-%g.trial-%d-random_alter' % (
         exp, FLAGS.reg_scale, FLAGS.meta_lr, FLAGS.update_lr, FLAGS.trial)
   checkpoint_dir = os.path.join(FLAGS.logdir, exp_name)
 

@@ -19,8 +19,10 @@ from __future__ import print_function
 from absl import flags
 import numpy as np
 import tensorflow.compat.v1 as tf
+import math
 from tensorflow.contrib import layers as contrib_layers
 from tensorflow.contrib import opt as contrib_opt
+from tensorflow.contrib import image as tf_img
 from tensorflow.contrib.layers.python import layers as tf_layers
 
 FLAGS = flags.FLAGS
@@ -152,8 +154,66 @@ class MAML(object):
         task_msesb.append(self.loss_func(output, labelb))
 
         ## BEGIN second network with FAKE train data/labels
-        input_fake = tf.random.uniform(shape=inputa.shape)
-        label_fake = tf.random.uniform(shape=labela.shape)
+
+        input_fake = inputa + 1
+        label_fake = labela
+
+        random = False
+        random_alter = True
+        mirror = False
+        upside_down = False
+        turn_180 = False
+        inverse = False # broken
+        random_crop = False # broken
+        adjust_contrast = False
+
+        if random:
+          input_fake = tf.random.uniform(shape=inputa.shape)
+          label_fake = tf.random.uniform(shape=labela.shape)
+
+        if random_alter:
+          input_fake = tf.math.minimum(1.0, tf.math.maximum(0.0, tf.random.uniform(shape=inputa.shape) - 0.5 + inputa))
+          label_fake = label_fake
+
+        if mirror:
+          inputa_reshaped = tf.reshape(inputa, [-1, 128, 128])
+          inputa_reversed = tf.image.flip_left_right(inputa_reshaped)
+          input_fake = tf.reshape(inputa_reversed, [-1, 128*128])
+          label_fake = 1 - label_fake
+
+        if upside_down:
+          inputa_reshaped = tf.reshape(inputa, [-1, 128, 128])
+          inputa_reversed = tf.image.flip_up_down(inputa_reshaped)
+          input_fake = tf.reshape(inputa_reversed, [-1, 128*128])
+          label_fake = label_fake
+
+        if turn_180:
+          input_reshaped = tf.reshape(inputa, [-1, 128, 128])
+          input_upside_down = tf_img.rotate(input_reshaped, math.radians(180))
+          input_fake = tf.reshape(input_upside_down, [-1, 128*128])
+          label_fake = label_fake
+
+        if inverse:
+          input_fake = tf.ones(inputa.shape) - input_fake
+          label_fake = label_fake
+
+        if random_crop:
+          inputa_reshaped = tf.reshape(inputa, [-1, 128, 128, 1])
+          print (f"inputa_reshaped.shape = {inputa_reshaped.shape}")
+          inputa_resized = tf.image.resize_images(inputa_reshaped, [256, 256])
+          inputa_resized = tf.reshape(inputa_resized, [-1, 256, 256])
+          print (f"inputa_resized.shape = {inputa_resized.shape}")
+          inputa_cropped = tf.image.random_crop(inputa_resized, [15, 256, 256])
+          input_fake = tf.reshape(inputa_cropped, [-1, 128*128])
+          label_fake = label_fake
+
+        if adjust_contrast:
+          inputa_reshaped = tf.reshape(inputa, [-1, 128, 128, 1])
+          inputa_adjusted = tf.image.adjust_contrast(inputa_reshaped, 2)
+          input_fake = tf.reshape(inputa_adjusted, [-1, 128*128])
+          label_fake = label_fake
+
+
         task_output_fake = self.forward(input_fake, weights, reuse=True)  # FIXME use FAKE input
         task_loss_fake = self.loss_func(task_output_fake, label_fake) # FIXME use FAKE label
 
@@ -182,7 +242,7 @@ class MAML(object):
 
         reg = self.regularizer(output, inputa, output_fake, input_fake)
         reg_scale = FLAGS.reg_scale
-        loss = self.loss_func(output, labelb) - reg_scale * reg
+        loss = tf.math.maximum(0.0, self.loss_func(output, labelb) - reg_scale * reg)
         
         task_lossesb.append(loss)
         task_output = [
