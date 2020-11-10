@@ -96,7 +96,7 @@ flags.DEFINE_integer('reg_scale', 1000, 'reg_scale')
 
 def train(model, sess, checkpoint_dir):
     print('Done initializing, start training.')
-    #old_time = time.time()
+    old_time = time.time()
     SUMMARY_INTERVAL = 5
     PRINT_INTERVAL = 50
     EXPERIMENT = 'pose'+ str(FLAGS.update_batch_size)+'shot'+str(FLAGS.beta)
@@ -108,7 +108,7 @@ def train(model, sess, checkpoint_dir):
     pre_val_r = []; post_val_r = []
     
     for itr in range( FLAGS.metatrain_iterations):
-        input_tensors = [model.metatrain_op, model.reg_op]
+        input_tensors = [model.metatrain_op]
 
         if (itr % SUMMARY_INTERVAL == 0 or itr % PRINT_INTERVAL == 0):
             input_tensors.extend([model.total_loss1, model.total_losses2])
@@ -116,6 +116,7 @@ def train(model, sess, checkpoint_dir):
                   model.metaval_total_loss1, model.metaval_total_losses2
               ]
         result = sess.run(input_tensors, feed_dict={})
+        result_reg = sess.run([model.reg_op], feed_dict={})
 
         if (itr % SUMMARY_INTERVAL == 0 or itr % PRINT_INTERVAL == 0):
             summary, result_val = sess.run([model.summ_op, input_tensors_val], feed_dict={})
@@ -130,8 +131,9 @@ def train(model, sess, checkpoint_dir):
             print(' Iteration ' + str(itr) + ':')
             print('Training: ', 'pre -->', np.mean(prelosses), 'post-->', np.mean(postlosses))            
             print('Validation: ', 'pre-->', np.mean(prelosses_val), 'post-->', np.mean(postlosses_val))
-            #print('time =', time.time() - old_time) 
+            print('time =', time.time() - old_time) 
             print('###############################')
+            old_time = time.time()
             
             # iter_r.append(itr)
             # pre_train_r.append(np.mean(prelosses)); post_train_r.append(np.mean(postlosses))
@@ -229,7 +231,8 @@ def main(_):
   dim_output = FLAGS.dim_y
   dim_input = FLAGS.dim_im * FLAGS.dim_im * 1
 
-  exp = 'maml_pose_diverse_dist_sep_reg'
+  #exp = 'maml_pose_sepregsess_outerscale_singleoutput_regopt'
+  exp = FLAGS.exp
   if FLAGS.weight_decay:
     exp_name = '%s.reg_scale-%g.meta_lr-%g.update_lr-%g.beta-%g.trial-%d' % (
         exp, FLAGS.reg_scale, FLAGS.meta_lr, FLAGS.update_lr, FLAGS.beta, FLAGS.trial)

@@ -122,8 +122,8 @@ class MAML(object):
             ]))
 
         # use theta_pi to forward meta-test
-        output = self.forward(inputb, fast_weights, reuse=True)
-        task_outputbs.append(output)
+        #output = self.forward(inputb, fast_weights, reuse=True)
+        #task_outputbs.append(output)
         # first meta-test loss, is not necessary to store
         #loss_value = self.loss_func(output, labelb)# + self.loss_func(output_fake, labelb)
         #task_msesb.append(loss_value)
@@ -171,7 +171,7 @@ class MAML(object):
             False)
 
       out_dtype = [
-          tf.float32, [tf.float32] * 2, tf.float32, [tf.float32], [tf.float32]
+          tf.float32, [tf.float32], tf.float32, [tf.float32], [tf.float32]
       ]
       result = tf.map_fn(task_metalearn, elems=(self.inputa, self.inputb, \
                                                 self.labela, self.labelb), dtype=out_dtype, \
@@ -184,7 +184,7 @@ class MAML(object):
       result_f = tf.map_fn(task_metalearn, elems=(self.input_fake, self.inputb, \
                                                 self.label_fake, self.labelb), dtype=out_dtype, \
                                                 parallel_iterations=FLAGS.meta_batch_size)
-      _, _, _, _, mses_fake = result_f
+      outputas_fake, outputbs_fake, _, _, _ = result_f
 
 
     ## Performance & Optimization
@@ -208,6 +208,8 @@ class MAML(object):
               weight_decay=FLAGS.beta, learning_rate=self.meta_lr)
         else:
           optimizer = tf.train.AdamOptimizer(self.meta_lr)
+
+        optimizer_reg = tf.train.AdamOptimizer(self.meta_lr)
         
         ## optimize task specific loss
         self.gvs_theta = gvs_theta = optimizer.compute_gradients(
@@ -215,9 +217,11 @@ class MAML(object):
         self.metatrain_op = optimizer.apply_gradients(gvs_theta)
         
         ## optimize diversity regularizer
-        reg = self.regularizer(tf.convert_to_tensor(msesb), self.inputa, tf.convert_to_tensor(mses_fake), self.input_fake)
-        self.reg_theta = optimizer.compute_gradients(-reg)
-        self.reg_op = optimizer.apply_gradients(self.reg_theta)
+        reg = FLAGS.reg_scale * self.regularizer(tf.convert_to_tensor(outputbs), self.inputa, tf.convert_to_tensor(outputbs_fake), self.input_fake)
+        # inner loop
+        # reg = FLAGS.reg_scale * self.regularizer(tf.convert_to_tensor(outputas), self.inputa, tf.convert_to_tensor(outputas_fake), self.input_fake)
+        self.reg_theta = optimizer_reg.compute_gradients(-reg)
+        self.reg_op = optimizer_reg.apply_gradients(self.reg_theta)
         tf.summary.scalar(prefix + 'diverse-gan-reg', reg)
     else:
       self.metaval_total_loss1 = total_loss1 = tf.reduce_sum(
