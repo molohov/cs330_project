@@ -80,6 +80,9 @@ class MAML(object):
     self.labela = input_tensors['labela']
     self.labelb = input_tensors['labelb']
 
+    self.input_fake = input_tensors['input_fake']
+    self.label_fake = input_tensors['label_fake']
+
     with tf.variable_scope('model', reuse=None) as training_scope:
       if 'weights' in dir(self):
         training_scope.reuse_variables()
@@ -175,6 +178,15 @@ class MAML(object):
                                                 parallel_iterations=FLAGS.meta_batch_size)
       outputas, outputbs, lossesa, lossesb, msesb = result
 
+      ## second fake run of the network
+      #inputa_fake = tf.random.uniform(self.inputa.shape)
+      #labela_fake = tf.random.uniform(self.labela.shape)
+      result_f = tf.map_fn(task_metalearn, elems=(self.input_fake, self.inputb, \
+                                                self.label_fake, self.labelb), dtype=out_dtype, \
+                                                parallel_iterations=FLAGS.meta_batch_size)
+      _, _, _, _, mses_fake = result_f
+
+
     ## Performance & Optimization
     if 'train' in prefix:
       # lossesa is length(meta_batch_size)
@@ -188,9 +200,6 @@ class MAML(object):
       # after the map_fn
       self.outputas, self.outputbs = outputas, outputbs
 
-      # # capture the regularizer over the batch
-      # reg_avg = tf.reduce_sum(reg) / tf.to_float(FLAGS.meta_batch_size)
-      # tf.summary.scalar(prefix + 'diverse_reg', reg_avg)
 
       # OUTER LOOP
       if FLAGS.metatrain_iterations > 0:
@@ -199,10 +208,17 @@ class MAML(object):
               weight_decay=FLAGS.beta, learning_rate=self.meta_lr)
         else:
           optimizer = tf.train.AdamOptimizer(self.meta_lr)
+        
+        ## optimize task specific loss
         self.gvs_theta = gvs_theta = optimizer.compute_gradients(
             self.total_losses2)
         self.metatrain_op = optimizer.apply_gradients(gvs_theta)
-
+        
+        ## optimize diversity regularizer
+        reg = self.regularizer(tf.convert_to_tensor(msesb), self.inputa, tf.convert_to_tensor(mses_fake), self.input_fake)
+        self.reg_theta = optimizer.compute_gradients(-reg)
+        self.reg_op = optimizer.apply_gradients(self.reg_theta)
+        tf.summary.scalar(prefix + 'diverse-gan-reg', reg)
     else:
       self.metaval_total_loss1 = total_loss1 = tf.reduce_sum(
           lossesa) / tf.to_float(FLAGS.meta_batch_size)

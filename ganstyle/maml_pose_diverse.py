@@ -108,7 +108,7 @@ def train(model, sess, checkpoint_dir):
     pre_val_r = []; post_val_r = []
     
     for itr in range( FLAGS.metatrain_iterations):
-        input_tensors = [model.metatrain_op]
+        input_tensors = [model.metatrain_op, model.reg_op]
 
         if (itr % SUMMARY_INTERVAL == 0 or itr % PRINT_INTERVAL == 0):
             input_tensors.extend([model.total_loss1, model.total_losses2])
@@ -214,7 +214,10 @@ def get_batch(x, y):
   xq = xq.astype(np.float32) / 255.0
   ys = ys.astype(np.float32) * 10.0
   yq = yq.astype(np.float32) * 10.0
-  return xs, ys, xq, yq
+
+  x_f = np.random.uniform(size=xs.shape)
+  y_f = np.random.uniform(size=ys.shape)
+  return xs, ys, xq, yq, x_f, y_f
 
 
 def gen(x, y):
@@ -226,7 +229,7 @@ def main(_):
   dim_output = FLAGS.dim_y
   dim_input = FLAGS.dim_im * FLAGS.dim_im * 1
 
-  exp = 'maml_pose_diverse_dist_stopgrad'
+  exp = 'maml_pose_diverse_dist_sep_reg'
   if FLAGS.weight_decay:
     exp_name = '%s.reg_scale-%g.meta_lr-%g.update_lr-%g.beta-%g.trial-%d' % (
         exp, FLAGS.reg_scale, FLAGS.meta_lr, FLAGS.update_lr, FLAGS.beta, FLAGS.trial)
@@ -245,9 +248,13 @@ def main(_):
 
   ds_train = tf.data.Dataset.from_generator(
       functools.partial(gen, x_train, y_train),
-      (tf.float32, tf.float32, tf.float32, tf.float32),
+      (tf.float32, tf.float32, tf.float32, tf.float32, tf.float32, tf.float32),
       (tf.TensorShape(
           [None, FLAGS.update_batch_size * FLAGS.num_classes, dim_input]),
+       tf.TensorShape(
+           [None, FLAGS.update_batch_size * FLAGS.num_classes, dim_output]),
+       tf.TensorShape(
+           [None, FLAGS.update_batch_size * FLAGS.num_classes, dim_input]),
        tf.TensorShape(
            [None, FLAGS.update_batch_size * FLAGS.num_classes, dim_output]),
        tf.TensorShape(
@@ -257,7 +264,7 @@ def main(_):
 
   ds_val = tf.data.Dataset.from_generator(
       functools.partial(gen, x_val, y_val),
-      (tf.float32, tf.float32, tf.float32, tf.float32),
+      (tf.float32, tf.float32, tf.float32, tf.float32, tf.float32, tf.float32),
       (tf.TensorShape(
           [None, FLAGS.update_batch_size * FLAGS.num_classes, dim_input]),
        tf.TensorShape(
@@ -265,20 +272,31 @@ def main(_):
        tf.TensorShape(
            [None, FLAGS.update_batch_size * FLAGS.num_classes, dim_input]),
        tf.TensorShape(
+           [None, FLAGS.update_batch_size * FLAGS.num_classes, dim_output]),
+       tf.TensorShape(
+           [None, FLAGS.update_batch_size * FLAGS.num_classes, dim_input]),
+       tf.TensorShape(
            [None, FLAGS.update_batch_size * FLAGS.num_classes, dim_output])))
 
-  inputa, labela, inputb, labelb = ds_train.make_one_shot_iterator().get_next()
+  inputa, labela, inputb, labelb, input_fake, label_fake = ds_train.make_one_shot_iterator().get_next()
 
   input_tensors = {'inputa': inputa,\
                    'inputb': inputb,\
-                   'labela': labela, 'labelb': labelb}
+                   'labela': labela,\
+                   'labelb': labelb,\
+                   'input_fake': input_fake,\
+                   'label_fake': label_fake}
 
-  inputa_val, labela_val, inputb_val, labelb_val = ds_val.make_one_shot_iterator(
+  inputa_val, labela_val, inputb_val, labelb_val, input_fake, label_fake = ds_val.make_one_shot_iterator(
   ).get_next()
 
   metaval_input_tensors = {'inputa': inputa_val,\
                            'inputb': inputb_val,\
-                           'labela': labela_val, 'labelb': labelb_val}
+                           'labela': labela_val,\
+                           'labelb': labelb_val,\
+                           'input_fake': input_fake,\
+                           'label_fake': label_fake}
+
 
   # num_updates = max(self.test_num_updates, FLAGS.num_updates)
   model = MAML(dim_input, dim_output)
