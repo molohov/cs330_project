@@ -158,16 +158,16 @@ class MAML(object):
         input_fake = inputa + 1
         label_fake = labela
 
-        random = False
-        random_alter = True
-        mirror = False
-        upside_down = False
-        turn_180 = False
-        inverse = False # broken
-        random_crop = False # broken
-        adjust_contrast = False
+        random = FLAGS.random
+        random_alter = FLAGS.random_alter
+        mirror = FLAGS.mirror
+        upside_down = FLAGS.upside_down
+        rotate_180 = FLAGS.rotate_180
+        inverse = FLAGS.inverse # broken
+        random_crop = FLAGS.random_crop # broken
+        adjust_contrast = FLAGS.adjust_contrast
 
-        if random:
+        if FLAGS.random:
           input_fake = tf.random.uniform(shape=inputa.shape)
           label_fake = tf.random.uniform(shape=labela.shape)
 
@@ -187,7 +187,7 @@ class MAML(object):
           input_fake = tf.reshape(inputa_reversed, [-1, 128*128])
           label_fake = label_fake
 
-        if turn_180:
+        if rotate_180:
           input_reshaped = tf.reshape(inputa, [-1, 128, 128])
           input_upside_down = tf_img.rotate(input_reshaped, math.radians(180))
           input_fake = tf.reshape(input_upside_down, [-1, 128*128])

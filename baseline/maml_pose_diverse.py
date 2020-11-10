@@ -93,6 +93,14 @@ flags.DEFINE_string('extra', 'exp', 'extra info')
 flags.DEFINE_integer('trial', 1, 'trial_num')
 flags.DEFINE_integer('reg_scale', 10, 'reg_scale')
 
+flags.DEFINE_bool('random', False, 'random experiment')
+flags.DEFINE_bool('random_alter', False, 'random_alter experiment')
+flags.DEFINE_bool('mirror', False, 'mirror experiment')
+flags.DEFINE_bool('upside_down', False, 'upside down experiment')
+flags.DEFINE_bool('rotate_180', False, 'rotate 180 experiment')
+flags.DEFINE_bool('inverse', False, 'inverse experiment')
+flags.DEFINE_bool('random_crop', False, 'random_crop experiment')
+flags.DEFINE_bool('adjust_contrast', False, 'adjust_contrast experiment')
 
 def train(model, sess, checkpoint_dir, _):
   print('Done initializing, starting training.')
@@ -252,12 +260,25 @@ def main(_):
   dim_input = FLAGS.dim_im * FLAGS.dim_im * 1
 
   exp = 'maml_pose_diverse_dist'
+
+
+  trial_name = "unnamed_trial"
+
+  if FLAGS.random:            trial_name = "random"
+  if FLAGS.random_alter:      trial_name = "random_alter"
+  if FLAGS.mirror:            trial_name = "mirror"
+  if FLAGS.upside_down:       trial_name = "upside_down"
+  if FLAGS.rotate_180:        trial_name = "rotate_180"
+  if FLAGS.inverse:           trial_name = "inverse"
+  if FLAGS.random_crop:       trial_name = "random_crop"
+  if FLAGS.adjust_contrast:   trial_name = "adjust_contrast"
+
   if FLAGS.weight_decay:
-    exp_name = '%s.reg_scale-%g.meta_lr-%g.update_lr-%g.beta-%g.trial-%d-random_alter' % (
-        exp, FLAGS.reg_scale, FLAGS.meta_lr, FLAGS.update_lr, FLAGS.beta, FLAGS.trial)
+    exp_name = '%s.reg_scale-%g.meta_lr-%g.update_lr-%g.beta-%g.trial-%d-%s' % (
+        exp, FLAGS.reg_scale, FLAGS.meta_lr, FLAGS.update_lr, FLAGS.beta, FLAGS.trial, trial_name)
   else:
-    exp_name = '%s.reg_scale-%g.meta_lr-%g.update_lr-%g.trial-%d-random_alter' % (
-        exp, FLAGS.reg_scale, FLAGS.meta_lr, FLAGS.update_lr, FLAGS.trial)
+    exp_name = '%s.reg_scale-%g.meta_lr-%g.update_lr-%g.trial-%d-%s' % (
+        exp, FLAGS.reg_scale, FLAGS.meta_lr, FLAGS.update_lr, FLAGS.trial, trial_name)
   checkpoint_dir = os.path.join(FLAGS.logdir, exp_name)
 
   x_train, y_train = pickle.load(open(os.getcwd()+'/'+FLAGS.data_dir+FLAGS.data[0],'rb'))
