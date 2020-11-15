@@ -159,7 +159,6 @@ class MAML(object):
         input_fake = inputa + 1
         label_fake = labela
 
-        random = FLAGS.random
         random_alter = FLAGS.random_alter
         mirror = FLAGS.mirror
         upside_down = FLAGS.upside_down
@@ -217,7 +216,7 @@ class MAML(object):
 
         if adjust_brightness:
           inputa_reshaped = tf.reshape(inputa, [-1, 128, 128, 1])
-          inputa_adjusted = tf.image.adjust_contrast(inputa_reshaped, delta=random.random())
+          inputa_adjusted = tf.image.adjust_brightness(inputa_reshaped, delta=random.random())
           input_fake = tf.reshape(inputa_adjusted, [-1, 128*128])
           label_fake = label_fake
 

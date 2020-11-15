@@ -273,7 +273,7 @@ def main(_):
   if FLAGS.inverse:           trial_name = "inverse"
   if FLAGS.random_crop:       trial_name = "random_crop"
   if FLAGS.adjust_contrast:   trial_name = "adjust_contrast"
-  if FLAGS.adjust_contrast:   trial_name = "adjust_brightness"
+  if FLAGS.adjust_brightness: trial_name = "adjust_brightness"
 
   if FLAGS.weight_decay:
     exp_name = '%s.reg_scale-%g.meta_lr-%g.update_lr-%g.beta-%g.trial-%d-%s' % (
