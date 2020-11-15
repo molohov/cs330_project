@@ -47,7 +47,7 @@ def mse(pred, label):
 def reg1(y_pred, x_train, y_pred_f, x_train_f):
   numerator = tf.reduce_sum(tf.sqrt(tf.reduce_sum(tf.square(y_pred - y_pred_f), axis=-1)))
   denom = tf.reduce_sum(tf.sqrt(tf.reduce_sum(tf.square(x_train - x_train_f), axis=-1)))
-  return tf.math.minimum(numerator/denom, 1e6) ## some upper bound
+  return [numerator, tf.math.minimum(numerator/denom, 1e6)] ## some upper bound
 
 
 class MAML(object):
@@ -246,13 +246,13 @@ class MAML(object):
         output_fake = self.forward(inputb, fast_weights, reuse=True)
         ## END second network with FAKE train data/labels
 
-        reg = self.regularizer(output, inputa, output_fake, input_fake)
+        num, reg = self.regularizer(output, inputa, output_fake, input_fake)
         reg_scale = FLAGS.reg_scale
         loss = tf.math.maximum(0.0, self.loss_func(output, labelb) - reg_scale * reg)
         
         task_lossesb.append(loss)
         task_output = [
-            task_outputa, task_outputbs, task_lossa, task_lossesb, task_msesb, reg
+            task_outputa, task_outputbs, task_lossa, task_lossesb, task_msesb, reg, num
         ]
 
         return task_output
@@ -265,12 +265,12 @@ class MAML(object):
             False)
 
       out_dtype = [
-          tf.float32, [tf.float32] * 2, tf.float32, [tf.float32], [tf.float32], tf.float32
+          tf.float32, [tf.float32] * 2, tf.float32, [tf.float32], [tf.float32], tf.float32, tf.float32
       ]
       result = tf.map_fn(task_metalearn, elems=(self.inputa, self.inputb, \
                                                 self.labela, self.labelb), dtype=out_dtype, \
                                                 parallel_iterations=FLAGS.meta_batch_size)
-      outputas, outputbs, lossesa, lossesb, msesb, reg = result
+      outputas, outputbs, lossesa, lossesb, msesb, reg, num = result
 
     ## Performance & Optimization
     if 'train' in prefix:
@@ -312,6 +312,7 @@ class MAML(object):
     tf.summary.scalar(prefix + 'Pre-mse', total_loss1)
     tf.summary.scalar(prefix + 'Post-mse_' + str(num_updates),
                       total_losses2)
+    tf.summary.scalar(prefix + 'numerator', tf.reduce_sum(num) / tf.to_float(FLAGS.meta_batch_size))
 
   def construct_conv_weights(self):
     """Construct conv weights."""
