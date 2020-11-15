@@ -101,6 +101,7 @@ flags.DEFINE_bool('rotate_180', False, 'rotate 180 experiment')
 flags.DEFINE_bool('inverse', False, 'inverse experiment')
 flags.DEFINE_bool('random_crop', False, 'random_crop experiment')
 flags.DEFINE_bool('adjust_contrast', False, 'adjust_contrast experiment')
+flags.DEFINE_bool('adjust_brightness', False, 'adjust_brightness experiment')
 
 def train(model, sess, checkpoint_dir, _):
   print('Done initializing, starting training.')
@@ -272,6 +273,7 @@ def main(_):
   if FLAGS.inverse:           trial_name = "inverse"
   if FLAGS.random_crop:       trial_name = "random_crop"
   if FLAGS.adjust_contrast:   trial_name = "adjust_contrast"
+  if FLAGS.adjust_contrast:   trial_name = "adjust_brightness"
 
   if FLAGS.weight_decay:
     exp_name = '%s.reg_scale-%g.meta_lr-%g.update_lr-%g.beta-%g.trial-%d-%s' % (

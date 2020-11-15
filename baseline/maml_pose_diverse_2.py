@@ -20,6 +20,7 @@ from absl import flags
 import numpy as np
 import tensorflow.compat.v1 as tf
 import math
+import random
 from tensorflow.contrib import layers as contrib_layers
 from tensorflow.contrib import opt as contrib_opt
 from tensorflow.contrib import image as tf_img
@@ -166,6 +167,7 @@ class MAML(object):
         inverse = FLAGS.inverse # broken
         random_crop = FLAGS.random_crop # broken
         adjust_contrast = FLAGS.adjust_contrast
+        adjust_brightness = FLAGS.adjust_brightness
 
         if FLAGS.random:
           input_fake = tf.random.uniform(shape=inputa.shape)
@@ -209,10 +211,15 @@ class MAML(object):
 
         if adjust_contrast:
           inputa_reshaped = tf.reshape(inputa, [-1, 128, 128, 1])
-          inputa_adjusted = tf.image.adjust_contrast(inputa_reshaped, 2)
+          inputa_adjusted = tf.image.adjust_contrast(inputa_reshaped, contrast_factor=random.uniform(0, 5))
           input_fake = tf.reshape(inputa_adjusted, [-1, 128*128])
           label_fake = label_fake
 
+        if adjust_brightness:
+          inputa_reshaped = tf.reshape(inputa, [-1, 128, 128, 1])
+          inputa_adjusted = tf.image.adjust_contrast(inputa_reshaped, delta=random.random())
+          input_fake = tf.reshape(inputa_adjusted, [-1, 128*128])
+          label_fake = label_fake
 
         task_output_fake = self.forward(input_fake, weights, reuse=True)  # FIXME use FAKE input
         task_loss_fake = self.loss_func(task_output_fake, label_fake) # FIXME use FAKE label
