@@ -231,7 +231,7 @@ class MAML(object):
             diff = tf.reduce_sum(diff)
             dist += tf.square(diff)
           denom = tf.sqrt(tf.reduce_sum(tf.square(self.inputa[batch] - self.input_fake[batch])))
-        reg += dist/denom
+          reg += (dist/denom) / tf.cast(FLAGS.meta_batch_size, dtype=tf.float32)
 
         #reg = self.regularizer(tf.convert_to_tensor(grad_updates), self.inputa, tf.convert_to_tensor(grad_updates_f), self.input_fake)
         # inner loop
